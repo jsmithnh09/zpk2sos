@@ -2,7 +2,15 @@
 A Zero-Pole-Gain to Second-Order-Section conversion library.
 
 ## Background
-With most filter design applications, the poles and zeros can be generated with different design parameters, resulting in a zero/pole/gain filter structure. In real world applications, these should be implemented as Biquads that have dedicated hardware routines.
+With most filter design applications, the poles and zeros can be generated with different design parameters, resulting in a zero/pole/gain filter structure:
+```math
+H(z) = \frac{(z - z_{1})(z - z_{2}) \ldots (z - z_{n})}{(z - p_{1})(z - p_{2}) \ldots (z - p_{n})}
+```
+
+In real world applications, these should be implemented as cascaded Biquads that have dedicated hardware routines:
+```math
+H(z) = \prod_{k=1}^{N} \frac{b_{0k} + b_{1k}z^{-1} + b_{2k}z^{-2}}{1 + a_{1k}z^{-1} + a_{2k}z^{-2}}
+```
 
 ## Algorithm
 The algorithm tackles a couple primary steps:
