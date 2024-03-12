@@ -13,4 +13,4 @@ The algorithm tackles a couple primary steps:
 
 ## References
 \[1\] Simon Kornblith, Galen Lynch, Martin Holters, João Felipe Santos, Spencer Russell, Jay Kickliter, Jeff Bezanson, Gudmundur Adalsteinsson, Alex Arslan, Ryuichi Yamamoto, jordancluts, Matti Pastell, Tony Kelman, Ben Arthur, Tom Krauss, HDictus, Hamza El-Saawy, Jared Kofron, Eric Hanson, … Jordan Smith. (2023). JuliaDSP/DSP.jl: v0.7.9 (v0.7.9). Zenodo. https://doi.org/10.5281/zenodo.8344531
-
+\[2\] Virtanen, P., Gommers, R., Oliphant, T.E. et al. SciPy 1.0: fundamental algorithms for scientific computing in Python. Nat Methods 17, 261–272 (2020). https://doi.org/10.1038/s41592-019-0686-2
