@@ -12,10 +12,13 @@ In real world applications, these should be implemented as cascaded Biquads that
 H(z) = \prod_{k=1}^{N} \frac{b_{0k} + b_{1k}z^{-1} + b_{2k}z^{-2}}{1 + a_{1k}z^{-1} + a_{2k}z^{-2}}
 ```
 
+## Assumptions
+The singularity inputs are assumed to already be mapped to the $z$-domain. External filter design methods, (Chebyshev, Elliptic, Butterworth, etc.) will provide the coefficient positions on the unit circle.
+
 ## Algorithm
 The algorithm tackles a couple primary steps:
 1. Sort the poles such that each singularity is adjacent to its conjugate
-3. Match poles closest to unit circle, `|x|+eps >= 1`, with zeros closest to those poles.
+3. Match poles closest to unit circle, $|p| + \epsilon \approx 1$, with zeros closest to those poles.
 4. Re-iterate #3 until every singularity has a paired pole or zero.
 5. For real poles, group them together (per section) that are closest in absolute value. The same rule holds for real zeros, (reduces the number of large/small value multiplications that result in roundoff error.)
 
