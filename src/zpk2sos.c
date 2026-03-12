@@ -261,8 +261,13 @@ size_t zpk2sos(const cplx64_t *z, size_t nz,
 		root2quad(zp.r1, zp.r2, &b0, &b1, &b2);
 		root2quad(pp.r1, pp.r2, &a0, &a1, &a2);
 
-		/* gross pointer math, but it works. */
-		// double *row = sos + 6*sing;
+		/**
+		 * gross pointer math.
+		 *
+		 * The sorting goes in worst-to-best order;
+		 * for stability, we'll store in reverse so
+		 * that the worst case pairing is the last stage.
+		 */
 		double *row = sos + 6*(curbiq-1);
 		curbiq--;
 		row[0]=b0; row[1]=b1; row[2]=b2;
