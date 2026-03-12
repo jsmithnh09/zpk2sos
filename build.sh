@@ -1,4 +1,7 @@
 #!/usr/bin/bash
 
-gcc -O2 -o zpk2sos_test zpk2sos.c -lm
+cmake -S . -B cmake-build
+cd cmake-build
+cmake --build .
+ctest
 exit 0
