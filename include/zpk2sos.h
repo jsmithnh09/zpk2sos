@@ -10,6 +10,14 @@
 extern "C" {
 #endif
 
+
+// expose the functions for use.
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT __attribute__((visibility("default")))
+#endif
+
 #include <stdlib.h>
 
 /**
@@ -34,7 +42,19 @@ typedef struct { double re; double im; } cplx64_t;
  *
  * Return: non-zero integer indicating success; zero indicating an error.
  */
-size_t zpk2sos(const cplx64_t *z, size_t numz, const cplx64_t *p, size_t nump, double k, double *sos);
+size_t _zpk2sos(const cplx64_t *z, size_t numz, const cplx64_t *p, size_t nump, double k, double *sos);
+
+/**
+ * zpk2sos() -- same function as above, but instead expects the zeros to be
+ * real and imaginary interlaced doubles.
+ * @z:	an array of real/imaginary double zeroes from filter design, (2x numz)
+ * @p:  an array of real/imaginary double poles from filter design, (2x nump)
+ * @k:	the real gain associated with the system.
+ * @sos:  the pre-allocated SOS matrix of size (numsections, 6).
+ *
+ * Return: non-zero integer indicating success; zero indicating error.
+ */
+EXPORT size_t zpk2sos(const double *z, size_t numz, const double *p, size_t nump, double k, double *sos);
 
 /**
  * soscount() -- returns the total number of required biquads.
@@ -43,7 +63,7 @@ size_t zpk2sos(const cplx64_t *z, size_t numz, const cplx64_t *p, size_t nump, d
  *
  * Return: the number of biquads required in the SOS matrix.
  */
-size_t soscount(size_t numzeros, size_t numpoles);
+EXPORT size_t soscount(size_t numzeros, size_t numpoles);
 
 
 #ifdef __cplusplus

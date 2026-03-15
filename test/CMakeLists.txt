@@ -1,13 +1,33 @@
-add_executable(test_ellip test_ellip.c)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
-target_link_libraries(test_ellip PRIVATE zpk2sos)
-target_include_directories(test_ellip PUBLIC 
-	${CMAKE_CURRENT_SOURCE_DIR}/../include)
+set(VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv")
+set(VENV_PYTHON "${VENV_DIR}/bin/python")
 
-# Setup the test.
-add_test(NAME TestEllipSos COMMAND test_ellip)
-set_tests_properties(TestEllipSos PROPERTIES
-	PASS_REGULAR_EXPRESSION "PASS"
-	FAIL_REGULUAR_EXPRESSION "FAIL"
-	)
+if(NOT EXISTS "${VENV_DIR}")
+	message(STATUS "### Creating Python virtual environment")
+	execute_process(
+		COMMAND ${Python3_EXECUTABLE} -m venv ${VENV_DIR}
+		RESULT_VARIABLE venv_result
+		)
+	if(NOT venv_result EQUAL 0)
+		message(FATAL_ERROR "Failed to create environment.")
+	endif()
+	message(STATUS "### Installing SciPy/PyTest")
+	set(PY_PKG "scipy" "pytest" "numpy")
+	foreach(pkg ${PY_PKG})
+		execute_process(COMMAND ${VENV_PYTHON} -m pip install ${pkg}
+			RESULT_VARIABLE pip_result
+			)
+		if(NOT pip_result EQUAL 0)
+			message(FATAL_ERROR "Failed to install ${pkg}.")
+		endif()
+	endforeach()
+endif()
 
+# adding the test for Python.
+add_test(NAME test_coeffs
+	COMMAND ${VENV_PYTHON} -m pytest "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# using environment variable generator instead of copying directly into tree.
+set_tests_properties(test_coeffs PROPERTIES ENVIRONMENT
+	"LIB_PATH=$<TARGET_FILE:zpk2sos>")

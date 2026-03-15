@@ -111,7 +111,7 @@ static int polecmp(const void *u, const void *v)
 
 
 // complex conjugate sorting. Doesn't absolute domain cases.
-int conjcmp(const void *a, const void *b)
+static int conjcmp(const void *a, const void *b)
 {
     cplx64_t z1 = *(cplx64_t *)a;
     cplx64_t z2 = *(cplx64_t *)b;
@@ -186,8 +186,8 @@ static int polerootcmp(const void *A, const void *B)
 	return (da < db) ? -1 : (da > db);
 }
 
-// function of interest!
-size_t zpk2sos(const cplx64_t *z, size_t nz,
+// function(s) of interest!
+size_t _zpk2sos(const cplx64_t *z, size_t nz,
 		const cplx64_t *p, size_t np,
 		double k,
 		double *sos)
@@ -281,6 +281,32 @@ size_t zpk2sos(const cplx64_t *z, size_t nz,
 	free(ppairs);
 	free(z_used);
 	return nsec;
+}
+
+/* API friendlier function signature. */
+size_t zpk2sos(const double *z, size_t nz, 
+		const double *p, size_t np,
+		double k, double *sos)
+{
+	/* interleave the real and imaginary components. */
+	int idx;
+	cplx64_t *zc;
+	cplx64_t *pc;
+	zc = malloc(nz * sizeof(cplx64_t));
+	pc = malloc(np * sizeof(cplx64_t));
+	for (idx = 0; idx < nz; idx++)
+	{
+		/* [re,im,re,im...] for both Z and P. */
+		zc[idx].re = z[2*idx];
+		zc[idx].im = z[2*idx+1];
+		pc[idx].re = p[2*idx];
+		pc[idx].im = p[2*idx+1];
+	}
+	size_t nstages = 0;
+	nstages = _zpk2sos(zc, nz, pc, np, k, sos);
+	free(zc);
+	free(pc);
+	return nstages;
 }
 
 // for pairing, we check that Nsections = max(ceil(nz/2), ceil(np/2)).

@@ -5,7 +5,7 @@ project(zpk2sos
 	LANGUAGES C)
 
 
-enable_testing()
+# enable_testing()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
