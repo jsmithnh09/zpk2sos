@@ -30,4 +30,4 @@ add_test(NAME test_coeffs
 
 # using environment variable generator instead of copying directly into tree.
 set_tests_properties(test_coeffs PROPERTIES ENVIRONMENT
-	"LIB_PATH=$<TARGET_FILE:zpk2sos>")
+	"ZSOS_LIB_PATH=$<TARGET_FILE:zpk2sos>")
