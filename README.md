@@ -12,6 +12,13 @@ In real world applications, these should be implemented as cascaded Biquads that
 H(z) = \prod_{k=1}^{N} \frac{b_{0k} + b_{1k}z^{-1} + b_{2k}z^{-2}}{1 + a_{1k}z^{-1} + a_{2k}z^{-2}}
 ```
 
+When grouping poles and zeroes, if we have complex conjugates, we can use this identity for polynomial expansion:
+```math
+(1 - c)(1 - c^{*}) \\ 
+= 1 + -c^{*} + -c + (-c \cdot -c^{*}) \\
+= 1 + -2 \cdot Re(c) + |c|^{2}
+```
+
 ## Assumptions
 The singularity inputs are assumed to already be mapped to the $z$-domain. External filter design methods, (Chebyshev, Elliptic, Butterworth, etc.) will provide the coefficient positions on the unit circle.
 
