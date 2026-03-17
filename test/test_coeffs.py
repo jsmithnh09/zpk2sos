@@ -91,12 +91,14 @@ def zpk2sos_wrapper(z, p, k):
 _fc = np.logspace(np.log10(20), np.log10(18e3), num=10)
 _ord = range(2, 13, 1)
 
+
 # packing multiple of the same parametrizations into a single decorator.
 def common_setup(func):
     func = pytest.mark.parametrize("fc", _fc)(func)
     func = pytest.mark.parametrize("btype", ["lowpass", "highpass"])(func)
     func = pytest.mark.parametrize("order", _ord)(func)
     return func
+
 
 @common_setup
 def test_butterworth(fc, btype, order):
@@ -107,15 +109,19 @@ def test_butterworth(fc, btype, order):
     (wtest, htest) = sosfreqz(sostest, worN=1024)
     assert bool(np.all(np.isclose(href, htest)))
 
+
 @common_setup
 def test_ellip(fc, btype, order):
     rp, rs = 40, 100
-    (z, p, k) = ellip(order, rp, rs, fc, fs=48e3, btype=btype, analog=False, output="zpk")
+    (z, p, k) = ellip(
+        order, rp, rs, fc, fs=48e3, btype=btype, analog=False, output="zpk"
+    )
     sosref = zpk2sos(z, p, k, pairing="nearest")
     (sostest, err) = zpk2sos_wrapper(z, p, k)
     (wref, href) = sosfreqz(sosref, worN=1024)
     (wtest, htest) = sosfreqz(sostest, worN=1024)
     assert bool(np.all(np.isclose(href, htest)))
+
 
 @common_setup
 def test_cheby1(fc, btype, order):
@@ -126,6 +132,7 @@ def test_cheby1(fc, btype, order):
     (wref, href) = sosfreqz(sosref, worN=1024)
     (wtest, htest) = sosfreqz(sostest, worN=1024)
     assert bool(np.all(np.isclose(href, htest)))
+
 
 @common_setup
 def test_cheby2(fc, btype, order):
