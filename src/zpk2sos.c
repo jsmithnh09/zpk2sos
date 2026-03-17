@@ -1,320 +1,178 @@
-
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include "zpk2sos.h"
 
-/* root pair type. complex double in header. */
 typedef struct {
-	cplx64_t r1;
-	cplx64_t r2;
-} rootpair;
+    double b[3]; // b0, b1, b2
+    double a[3]; // a0, a1, a2 (a0 *ought to be* 1.0)
+} biquad64_t;
+
+static double get_mag_sq(cplx64_t c) { 
+	return c.re * c.re + c.im * c.im; 
+}
+
+static double get_dist_sq(cplx64_t c1, cplx64_t c2) {
+    double dr = c1.re - c2.re, di = c1.im - c2.im;
+    return dr * dr + di * di;
+}
+
+/* Comparator for qsort: Sorts poles by distance to unit circle |1 - |p|| */
+static int polecmp(const void *a, const void *b) {
+    cplx64_t p1 = *(cplx64_t *)a;
+    cplx64_t p2 = *(cplx64_t *)b;
+    double d1 = fabs(sqrt(get_mag_sq(p1)) - 1.0);
+    double d2 = fabs(sqrt(get_mag_sq(p2)) - 1.0);
+
+    if (d1 > d2) return -1; // Reversed: larger distance comes first
+    if (d1 < d2) return 1;
+
+    /* code below is if we want worst stage first. */
+    // if (d1 < d2) return -1;
+    // if (d1 > d2) return 1;
+    return 0;
+}
+
 
 /**
- * helper/utility functions for complex operations.
+ * core_pairing: Implements nearest-neighbor pairing for padded arrays.
  */
-static cplx64_t add(cplx64_t a, cplx64_t b)
-{
-	cplx64_t y = {a.re + b.re, a.im + b.im};
-	return y;
-}
-static cplx64_t sub(cplx64_t a, cplx64_t b)
-{
-	cplx64_t y = {a.re - b.re, a.im - b.im};
-	return y;
-}
-static cplx64_t mult(cplx64_t a, cplx64_t b)
-{
-	cplx64_t y = {a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re};
-	return y;
-}
-static double abs64(cplx64_t a)
-{
-	return sqrt(a.re*a.re + a.im*a.im);
-}
+static size_t core_pairing(cplx64_t *z, cplx64_t *p, int n, double k, double *sos_raw) {
+    bool *z_used = (bool *)calloc(n, sizeof(bool));
+    bool *p_used = (bool *)calloc(n, sizeof(bool));
+    int sec_idx = 0;
 
-static int isreal(cplx64_t r, double tol)
-{
-	return fabs(r.im) < tol;
-}
+    // Pre-sort poles to handle "importance" up front
+    qsort(p, n, sizeof(cplx64_t), polecmp);
 
-//validate that a1+b1j and a2-b2j are conjugate; i.e. a1-a2=0 and b1+b2=0.
-static int isconj(cplx64_t a, cplx64_t b, double tol)
-{
-	return fabs(a.re - b.re) < tol && fabs(a.im + b.im) < tol;
-}
+    for (int i = 0; i < n; i++) {
+        if (p_used[i]) continue;
 
-/**
- * (x - s1)(x - s2) = x^2 - (r1 + r2)x + r1*r2
- * s1 and s2 in this case ought to be conjugates or real. That way the imaginary components
- * get squeezed out.
- */
-static void root2quad(cplx64_t s1, cplx64_t s2, double *c0, double *c1, double *c2)
-{
-	cplx64_t sum = add(s1, s2);
-	cplx64_t prod= mult(s1, s2);
-	*c0 = 1.0;
-	*c1 = -sum.re;
-	*c2 = prod.re;
-}
+        p_used[i] = true;
+        cplx64_t p1 = p[i], p2 = {0, 0};
+        bool p2_exists = false;
 
-/**
- * Imaginary component above is ASSUMED to be non-significant. Otherwise, we have
- * complex coefficients. Alert that we have invalid inputs if this doesn't form a
- * real (non-complex) quadratic.
- */
-static int isrealroots(cplx64_t s1, cplx64_t s2)
-{
-	const double tol = 1e-10;
-	cplx64_t sum = add(s1, s2);
-	cplx64_t prod = mult(s1, s2);
-	if (fabs(sum.im) > tol) return 0;
-	if (fabs(prod.im) > tol) return 0;
-	return 1;
-}
+        // Find conjugate pole
+        if (fabs(p1.im) > 1e-12) {
+            for (int j = 0; j < n; j++) {
+                if (!p_used[j] && fabs(p[j].re - p1.re) < 1e-9 && fabs(p[j].im + p1.im) < 1e-9) {
+                    p2 = p[j]; 
+		    p_used[j] = true; 
+		    p2_exists = true; 
+		    break;
+                }
+            }
+        }
 
-// energy calculation -> \Sigma |x[n]|^2.
-double energy(cplx64_t *x, const int N)
-{
-	double E = 0;
-	for (int idx = 0; idx < N; idx++)
-	{
-		E += abs64(x[idx]) * abs64(x[idx]);
-	}
-	return E;
-}
+        // Find nearest zero to p1
+        int z1_idx = -1;
+        double min_dist_z = 1e18;
+        for (int j = 0; j < n; j++) {
+            if (!z_used[j]) {
+                double d = get_dist_sq(p1, z[j]);
+                if (d < min_dist_z) { 
+			min_dist_z = d; 
+			z1_idx = j; 
+		}
+            }
+        }
 
-// distance to unit circle.
-static double poledist(cplx64_t p)
-{
-	return fabs(abs64(p) - 1.0);
-}
+        cplx64_t z1 = z[z1_idx], z2 = {0, 0};
+        z_used[z1_idx] = true;
+        bool z2_exists = false;
 
-// distance between two poles.
-static double dist(cplx64_t a, cplx64_t b)
-{
-	double dr = a.re - b.re;
-	double di = a.im - b.im;
-	return dr*dr + di*di;
-}
+        // Find conjugate zero or second real zero
+        if (fabs(z1.im) > 1e-12) {
+            for (int j = 0; j < n; j++) {
+                if (!z_used[j] && fabs(z[j].re - z1.re) < 1e-9 && fabs(z[j].im + z1.im) < 1e-9) {
+                    z2 = z[j]; 
+		    z_used[j] = true; 
+		    z2_exists = true; 
+		    break;
+                }
+            }
+        } else if (p2_exists) {
+            int z2_idx = -1; 
+	    double min_d2 = 1e18;
+            for (int j = 0; j < n; j++) {
+                if (!z_used[j] && fabs(z[j].im) < 1e-12) {
+                    double d = get_dist_sq(p1, z[j]);
+                    if (d < min_d2) { 
+			    min_d2 = d; 
+			    z2_idx = j; 
+		    }
+                }
+            }
+            if (z2_idx != -1) { 
+		    z2 = z[z2_idx]; 
+		    z_used[z2_idx] = true; 
+		    z2_exists = true;
+	    }
+        }
 
-// follows the same function signature qsort utilizes.
-static int polecmp(const void *u, const void *v)
-{
-	const cplx64_t *a = (const cplx64_t*)u;
-	const cplx64_t *b = (const cplx64_t*)v;
-	double da = poledist(*a);
-	double db = poledist(*b);
-	return (da < db) ? -1 : (da > db);
-}
+        // Write to flat double array
+        double *s = &sos_raw[sec_idx * 6];
+        double sk = (sec_idx == 0) ? k : 1.0;
 
+        s[0] = sk; // b0
+	/* poly expansion. */
+        if (z2_exists) {
+            s[1] = sk * -(z1.re + z2.re);
+            s[2] = sk * (z1.re * z2.re - z1.im * z2.im);
+        } else {
+            s[1] = sk * -z1.re;
+            s[2] = 0.0;
+        }
 
-
-// complex conjugate sorting. Doesn't absolute domain cases.
-static int conjcmp(const void *a, const void *b)
-{
-    cplx64_t z1 = *(cplx64_t *)a;
-    cplx64_t z2 = *(cplx64_t *)b;
-
-    // -1 if ascending, 1 for descending. swap for reversing the sort order.
-    if (z1.re != z2.re)
-    {
-        return (z1.re > z2.re) - (z1.re < z2.re);
+        s[3] = 1.0; // a0
+        if (p2_exists) {
+            s[4] = -(p1.re + p2.re);
+            s[5] = (p1.re * p2.re - p1.im * p2.im);
+        } else {
+            s[4] = -p1.re;
+            s[5] = 0.0;
+        }
+        sec_idx++;
     }
-    else
-    {
-        return (z1.im > z2.im) - (z1.im < z2.im);
+
+    free(z_used); 
+    free(p_used);
+    return (size_t)sec_idx;
+}
+
+/**
+ * zpk2sos
+ * Accepts interleaved doubles [re, im, re, im...]
+ * Pads Z and P with zeros at the origin to match lengths.
+ */
+size_t zpk2sos(const double *z_raw, size_t n_z, const double *p_raw, size_t n_p, double k, double *sos) {
+    int max_n = (n_z > n_p) ? n_z : n_p;
+    
+    cplx64_t *z_pad = (cplx64_t *)calloc(max_n, sizeof(cplx64_t));
+    cplx64_t *p_pad = (cplx64_t *)calloc(max_n, sizeof(cplx64_t));
+
+    // Convert interleaved to struct and pad shorter array with (0,0)
+    for (size_t i = 0; i < n_z; i++) { 
+	    z_pad[i].re = z_raw[2 * i]; 
+	    z_pad[i].im = z_raw[2 * i + 1]; 
     }
+    for (size_t i = 0; i < n_p; i++) { 
+	    p_pad[i].re = p_raw[2 * i]; 
+	    p_pad[i].im = p_raw[2 * i + 1]; 
+    }
+
+    size_t num_sections = core_pairing(z_pad, p_pad, max_n, k, sos);
+    free(z_pad); 
+    free(p_pad);
+    return num_sections;
 }
 
-// pre-processing; this will pair roots into conjugate or real pairs first.
-static rootpair *pair_roots(const cplx64_t *r, size_t n, size_t *npairs_found)
-{
-	const double tol = 1e-10;
-	int *used = calloc(n, sizeof(int));
-	rootpair *pairs = malloc(sizeof(rootpair) * ((n+1)/2));
-	size_t npairs = 0;
-
-	for (size_t idx = 0; idx < n; idx++)
-	{
-		if (used[idx]) continue;
-
-		cplx64_t r1 = r[idx];
-		used[idx] = 1;
-
-		/* real root -> pair with itself */
-		if (isreal(r1, tol))
-		{
-			pairs[npairs++] = (rootpair){r1, (cplx64_t){0,0}};
-			continue;
-		}
-
-		/* find conjugate ahead. */
-		int found = 0;
-		for (size_t c = idx+1; c < n; c++)
-		{
-			if (!used[c] && isconj(r1, r[c], tol))
-			{
-				used[c] = 1;
-				pairs[npairs++] = (rootpair){r1, r[c]};
-				found = 1;
-				break;
-			}
-		}
-		if (!found)
-		{
-			fprintf(stderr, "ERROR: root (%.6f + %.6fj) has no conjugate.\n",
-					r1.re, r1.im);
-			free(used);
-			free(pairs);
-			npairs_found = 0;
-			return NULL;
-		}
-	}
-	free(used);
-	*npairs_found = npairs;
-	return pairs;
+/**
+ * soscount
+ * returns the number of biquad sections/stages required for allocation.
+ */
+size_t soscount(size_t numz, size_t nump) {
+	int max_sing = (numz > nump) ? numz : nump;
+	return (size_t)((max_sing + 1) / 2); // ceil
 }
-
-static int polerootcmp(const void *A, const void *B)
-{
-	const rootpair *a = (const rootpair*)A;
-	const rootpair *b = (const rootpair*)B;
-
-	double da = poledist(a->r1);
-	double db = poledist(b->r1);
-	return (da < db) ? -1 : (da > db);
-}
-
-// function(s) of interest!
-size_t _zpk2sos(const cplx64_t *z, size_t nz,
-		const cplx64_t *p, size_t np,
-		double k,
-		double *sos)
-{
-	/* pair the zeros */
-	size_t nzpairs = 0;
-	rootpair *zpairs = pair_roots(z, nz, &nzpairs);
-	if (!nzpairs) return 0;
-
-	/* pair the poles */
-	size_t nppairs = 0;
-	rootpair *ppairs = pair_roots(p, np, &nppairs);
-	if (!nppairs) return 0;
-
-	/* sort pole pairs based on nearest distance. */
-	qsort(ppairs, nppairs, sizeof(rootpair), polerootcmp);
-
-	/* number of sections */
-	size_t nsec = (nzpairs > nppairs) ? nzpairs : nppairs;
-	int *z_used = calloc(nzpairs, sizeof(int));
-	int curbiq = nsec;
-	for (size_t sing = 0; sing < nsec; sing++)
-	{
-		/* pick pole pair or pad with real zero (even vs. odd) */
-		rootpair pp = (sing < nppairs) ? ppairs[sing] : (rootpair){ {0, 0}, {0,0} };
-
-		/* find nearest zero pair */
-		double best = 1e300; // absurd cost.
-		int best_idx = -1;
-
-		for (size_t idx = 0; idx < nzpairs; idx++)
-		{
-			if (!z_used[idx])
-			{
-				double d = dist(pp.r1, zpairs[idx].r1);
-				if (d < best)
-				{
-					best = d;
-					best_idx = (int)idx;
-				}
-			}
-		}
-		rootpair zp = (best_idx >= 0) ? zpairs[best_idx] : (rootpair) { {0, 0}, {0, 0} };
-		if (best_idx >= 0)
-		{
-			z_used[best_idx] = 1;
-		}
-
-		/* validate we don't have complex coefficients. */
-		if (!isrealroots(zp.r1, zp.r2))
-		{
-			fprintf(stderr, "ERROR: zero pair (%.6f + %.6fj, %.6f + %.6fj) invalid.\n",
-					zp.r1.re, zp.r1.im, zp.r2.re, zp.r2.im);
-			free(zpairs);
-			free(ppairs);
-			free(z_used);
-			return 0;
-		}
-		if (!isrealroots(pp.r1, pp.r2))
-		{
-			fprintf(stderr, "ERROR: pole pair (%.6f + %.6fj, %.6f + %.6fj) invalid.\n",
-					pp.r1.re, pp.r1.im, pp.r2.re, pp.r2.im);
-			free(zpairs);
-			free(ppairs);
-			free(z_used);
-			return 0;
-		}
-
-		/* build the SOS now that we've passed pairing! */
-		double b0, b1, b2, a0, a1, a2;
-		root2quad(zp.r1, zp.r2, &b0, &b1, &b2);
-		root2quad(pp.r1, pp.r2, &a0, &a1, &a2);
-
-		/**
-		 * gross pointer math.
-		 *
-		 * The sorting goes in worst-to-best order;
-		 * for stability, we'll store in reverse so
-		 * that the worst case pairing is the last stage.
-		 */
-		double *row = sos + 6*(curbiq-1);
-		curbiq--;
-		row[0]=b0; row[1]=b1; row[2]=b2;
-		row[3]=a0; row[4]=a1; row[5]=a2;
-	}
-	/* incorporate the gain into the first section. */
-	sos[0] *= k;
-	sos[1] *= k;
-	sos[2] *= k;
-	free(zpairs);
-	free(ppairs);
-	free(z_used);
-	return nsec;
-}
-
-/* API friendlier function signature. */
-size_t zpk2sos(const double *z, size_t nz, 
-		const double *p, size_t np,
-		double k, double *sos)
-{
-	/* interleave the real and imaginary components. */
-	int idx;
-	cplx64_t *zc;
-	cplx64_t *pc;
-	zc = malloc(nz * sizeof(cplx64_t));
-	pc = malloc(np * sizeof(cplx64_t));
-	for (idx = 0; idx < nz; idx++)
-	{
-		/* [re,im,re,im...] for both Z and P. */
-		zc[idx].re = z[2*idx];
-		zc[idx].im = z[2*idx+1];
-		pc[idx].re = p[2*idx];
-		pc[idx].im = p[2*idx+1];
-	}
-	size_t nstages = 0;
-	nstages = _zpk2sos(zc, nz, pc, np, k, sos);
-	free(zc);
-	free(pc);
-	return nstages;
-}
-
-// for pairing, we check that Nsections = max(ceil(nz/2), ceil(np/2)).
-size_t soscount(size_t numzeros, size_t numpoles)
-{
-	size_t nz = (numzeros + 1) / 2;
-	size_t np = (numpoles + 1) / 2;
-	return (nz > np) ? nz : np;
-}
-
-

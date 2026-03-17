@@ -18,3 +18,8 @@ set_target_properties(zpk2sos PROPERTIES
 	POSITION_INDEPENDENT_CODE ON
 	)
 
+# adding debug capability here (kinda manual, but that's fine for now.)
+option(ENABLE_DEBUG "Enabling Debug printout for pair tracking" ON)
+if (ENABLE_DEBUG)
+	target_compile_definitions(zpk2sos PRIVATE ZPK_DEBUG)
+endif()

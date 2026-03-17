@@ -3,6 +3,7 @@ from ctypes import CDLL, c_size_t, POINTER, c_double
 from pathlib import Path
 import numpy as np
 import sys
+import atexit
 from scipy.signal import butter, cheby1, cheby2, ellip, zpk2sos
 
 # CMake ought to configure this.
@@ -34,8 +35,6 @@ lib = CDLL(_libstr)
 atexit.register(unload_library)
 
 # exposing the zpk2sos signature for interleaved complex values.
-# EXPORT size_t zpk2sos(const double *, size_t, const double *, size_t, double, double *);
-# EXPORT size_t soscount(size_t, size_t);
 lib.soscount.argtypes = [c_size_t, c_size_t]
 lib.soscount.restype = c_size_t
 lib.zpk2sos.argtypes = [
@@ -50,6 +49,24 @@ lib.zpk2sos.restype = c_size_t
 
 
 def zpk2sos_wrapper(z, p, k):
+    """
+    ZPK2SOS C-wrapper.
+
+    Parameters
+    ----------
+    z : ndarray
+        complex array of zeroes on z-plane.
+    p : ndarray
+        complex array of poles on the z-plane.
+    k : double
+        real scalar gain of the system.
+
+    Returns
+    -------
+    sos, err : ndarray, int
+        Second-order sections of the IIR filter, along with
+        an indicator if an internal error code (must be zero.)
+    """
     # need to enforce complex values.
     z = np.complex128(z)
     p = np.complex128(p)
@@ -60,9 +77,10 @@ def zpk2sos_wrapper(z, p, k):
 
     numz = c_size_t(len(z))
     nump = c_size_t(len(p))
-    nstages = lib.soscount(nz, np)
+    nstages = lib.soscount(numz, nump)
     sosmat = np.zeros((nstages, 6), dtype=np.float64)
 
     sos_ptr = sosmat.ctypes.data_as(POINTER(c_double))
     err = lib.zpk2sos(z_ptr, numz, p_ptr, nump, kc, sos_ptr)
     return (sosmat, err)
+

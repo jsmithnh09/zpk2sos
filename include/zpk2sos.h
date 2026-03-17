@@ -11,6 +11,17 @@ extern "C" {
 #endif
 
 
+// need debugging to track the pairing.
+#ifdef ZPK_DEBUG
+    // The __VAR_ARGS__ is specific to GCC/Clang.
+    #define DEBUG_PRINT(fmt, ...) \
+            fprintf(stderr, "[DEBUG] %s:%d:%s(): " fmt "\n", \
+            __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#else
+    // do nuthin'.
+    #define DEBUG_PRINT(fmt, ...)
+#endif
+
 // expose the functions for use.
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
@@ -29,20 +40,6 @@ extern "C" {
  * @im: imaginary component of a complex number.
  */
 typedef struct { double re; double im; } cplx64_t;
-
-/**
- * zpk2sos() -- group nearest poles and zeros together, matching the "nearest"
- * method approach used in SciPy.
- * @z:   an array of complex zeroes from filter design.
- * @numz:   the number of zeroes in the z-array.
- * @p:   an array of complex poles for pairing.
- * @nump:   the number of poles in the p-array.
- * @k:   the real gain associated with the system.
- * @sos:   the pre-allocated SOS matrix of size (numsections, 6).
- *
- * Return: non-zero integer indicating success; zero indicating an error.
- */
-size_t _zpk2sos(const cplx64_t *z, size_t numz, const cplx64_t *p, size_t nump, double k, double *sos);
 
 /**
  * zpk2sos() -- same function as above, but instead expects the zeros to be
