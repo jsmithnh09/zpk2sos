@@ -48,6 +48,8 @@ lib.zpk2sos.argtypes = [
     POINTER(c_double),
 ]
 lib.zpk2sos.restype = c_size_t
+
+
 def soscmp(sos1, sos2, num=1024, atol=1e-08):
     """
     Compare SOS responses.
@@ -131,6 +133,7 @@ def test_butterworth(fc, btype, order):
     (sostest, err) = zpk2sos_wrapper(z, p, k)
     assert soscmp(sosref, sostest, num=1024)
 
+
 @common_setup
 def test_ellip(fc, btype, order):
     rp, rs = 40, 100
@@ -140,6 +143,7 @@ def test_ellip(fc, btype, order):
     sosref = zpk2sos(z, p, k, pairing="nearest")
     (sostest, err) = zpk2sos_wrapper(z, p, k)
     assert soscmp(sosref, sostest, num=1024, atol=1e-9)
+
 
 @common_setup
 def test_cheby1(fc, btype, order):
