@@ -48,6 +48,30 @@ lib.zpk2sos.argtypes = [
     POINTER(c_double),
 ]
 lib.zpk2sos.restype = c_size_t
+def soscmp(sos1, sos2, num=1024, atol=1e-08):
+    """
+    Compare SOS responses.
+
+    Parameters
+    ----------
+    sos1 : ndarray
+           the reference SOS matrix.
+    sos2 : ndarray
+           the test SOS matrix.
+    num  : Union[float,int]
+           an indicator of the number of bins to sample.
+    fs   : float
+           the sampling rate (since this is discrete.)
+
+    Returns
+    -------
+    flag : bool
+           indicates True if the respones are within
+           default precision.
+    """
+    (wref, href) = sosfreqz(sos1, worN=num)
+    (wtest, htest) = sosfreqz(sos2, worN=num)
+    return bool(np.all(np.isclose(href, htest, atol=atol)))
 
 
 def zpk2sos_wrapper(z, p, k):
@@ -105,10 +129,7 @@ def test_butterworth(fc, btype, order):
     (z, p, k) = butter(order, fc, fs=48e3, btype=btype, analog=False, output="zpk")
     sosref = zpk2sos(z, p, k, pairing="nearest")
     (sostest, err) = zpk2sos_wrapper(z, p, k)
-    (wref, href) = sosfreqz(sosref, worN=1024)
-    (wtest, htest) = sosfreqz(sostest, worN=1024)
-    assert bool(np.all(np.isclose(href, htest)))
-
+    assert soscmp(sosref, sostest, num=1024)
 
 @common_setup
 def test_ellip(fc, btype, order):
@@ -118,10 +139,7 @@ def test_ellip(fc, btype, order):
     )
     sosref = zpk2sos(z, p, k, pairing="nearest")
     (sostest, err) = zpk2sos_wrapper(z, p, k)
-    (wref, href) = sosfreqz(sosref, worN=1024)
-    (wtest, htest) = sosfreqz(sostest, worN=1024)
-    assert bool(np.all(np.isclose(href, htest)))
-
+    assert soscmp(sosref, sostest, num=1024, atol=1e-9)
 
 @common_setup
 def test_cheby1(fc, btype, order):
@@ -129,9 +147,7 @@ def test_cheby1(fc, btype, order):
     (z, p, k) = cheby1(order, rp, fc, fs=48e3, btype=btype, analog=False, output="zpk")
     sosref = zpk2sos(z, p, k, pairing="nearest")
     (sostest, err) = zpk2sos_wrapper(z, p, k)
-    (wref, href) = sosfreqz(sosref, worN=1024)
-    (wtest, htest) = sosfreqz(sostest, worN=1024)
-    assert bool(np.all(np.isclose(href, htest)))
+    assert soscmp(sosref, sostest, num=1024, atol=1e-9)
 
 
 @common_setup
@@ -140,6 +156,4 @@ def test_cheby2(fc, btype, order):
     (z, p, k) = cheby2(order, rs, fc, fs=48e3, btype=btype, analog=False, output="zpk")
     sosref = zpk2sos(z, p, k, pairing="nearest")
     (sostest, err) = zpk2sos_wrapper(z, p, k)
-    (wref, href) = sosfreqz(sosref, worN=1024)
-    (wtest, htest) = sosfreqz(sostest, worN=1024)
-    assert bool(np.all(np.isclose(href, htest)))
+    assert soscmp(sosref, sostest, num=1024, atol=1e-9)
