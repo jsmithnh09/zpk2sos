@@ -39,7 +39,7 @@ cmake --build .
 
 # Run CTest inside the build.
 echo "-- Testing..."
-ctest --output-on-failure
+ctest -V --output-on-failure
 
 # hurray!
 printf "${GREEN_COLOR}${CHECKMARK_ICON} Success!${RESET_COLOR}\n"

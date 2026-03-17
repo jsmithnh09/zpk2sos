@@ -26,7 +26,7 @@ endif()
 
 # adding the test for Python.
 add_test(NAME test_coeffs
-	COMMAND ${VENV_PYTHON} -m pytest "${CMAKE_CURRENT_SOURCE_DIR}")
+	COMMAND ${VENV_PYTHON} -u -m pytest --capture=no "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # using environment variable generator instead of copying directly into tree.
 set_tests_properties(test_coeffs PROPERTIES ENVIRONMENT

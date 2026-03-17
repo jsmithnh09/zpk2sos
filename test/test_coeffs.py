@@ -3,8 +3,9 @@ from ctypes import CDLL, c_size_t, POINTER, c_double
 from pathlib import Path
 import numpy as np
 import sys
+import os
 import atexit
-from scipy.signal import butter, cheby1, cheby2, ellip, zpk2sos
+from scipy.signal import butter, cheby1, cheby2, ellip, zpk2sos, sosfreqz
 
 # CMake ought to configure this.
 _libenv = os.environ.get("ZSOS_LIB_PATH")
@@ -85,3 +86,53 @@ def zpk2sos_wrapper(z, p, k):
     err = lib.zpk2sos(z_ptr, numz, p_ptr, nump, kc, sos_ptr)
     return (sosmat, err)
 
+
+# defining the orders and corner frequencies.
+_fc = np.logspace(np.log10(20), np.log10(18e3), num=10)
+_ord = range(2, 13, 1)
+
+# packing multiple of the same parametrizations into a single decorator.
+def common_setup(func):
+    func = pytest.mark.parametrize("fc", _fc)(func)
+    func = pytest.mark.parametrize("btype", ["lowpass", "highpass"])(func)
+    func = pytest.mark.parametrize("order", _ord)(func)
+    return func
+
+@common_setup
+def test_butterworth(fc, btype, order):
+    (z, p, k) = butter(order, fc, fs=48e3, btype=btype, analog=False, output="zpk")
+    sosref = zpk2sos(z, p, k, pairing="nearest")
+    (sostest, err) = zpk2sos_wrapper(z, p, k)
+    (wref, href) = sosfreqz(sosref, worN=1024)
+    (wtest, htest) = sosfreqz(sostest, worN=1024)
+    assert bool(np.all(np.isclose(href, htest)))
+
+@common_setup
+def test_ellip(fc, btype, order):
+    rp, rs = 40, 100
+    (z, p, k) = ellip(order, rp, rs, fc, fs=48e3, btype=btype, analog=False, output="zpk")
+    sosref = zpk2sos(z, p, k, pairing="nearest")
+    (sostest, err) = zpk2sos_wrapper(z, p, k)
+    (wref, href) = sosfreqz(sosref, worN=1024)
+    (wtest, htest) = sosfreqz(sostest, worN=1024)
+    assert bool(np.all(np.isclose(href, htest)))
+
+@common_setup
+def test_cheby1(fc, btype, order):
+    rp = 40
+    (z, p, k) = cheby1(order, rp, fc, fs=48e3, btype=btype, analog=False, output="zpk")
+    sosref = zpk2sos(z, p, k, pairing="nearest")
+    (sostest, err) = zpk2sos_wrapper(z, p, k)
+    (wref, href) = sosfreqz(sosref, worN=1024)
+    (wtest, htest) = sosfreqz(sostest, worN=1024)
+    assert bool(np.all(np.isclose(href, htest)))
+
+@common_setup
+def test_cheby2(fc, btype, order):
+    rs = 100
+    (z, p, k) = cheby2(order, rs, fc, fs=48e3, btype=btype, analog=False, output="zpk")
+    sosref = zpk2sos(z, p, k, pairing="nearest")
+    (sostest, err) = zpk2sos_wrapper(z, p, k)
+    (wref, href) = sosfreqz(sosref, worN=1024)
+    (wtest, htest) = sosfreqz(sostest, worN=1024)
+    assert bool(np.all(np.isclose(href, htest)))
