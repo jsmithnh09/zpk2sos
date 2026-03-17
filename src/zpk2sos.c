@@ -24,13 +24,8 @@ static int polecmp(const void *a, const void *b) {
     cplx64_t p2 = *(cplx64_t *)b;
     double d1 = fabs(sqrt(get_mag_sq(p1)) - 1.0);
     double d2 = fabs(sqrt(get_mag_sq(p2)) - 1.0);
-
-    if (d1 > d2) return -1; // Reversed: larger distance comes first
-    if (d1 < d2) return 1;
-
-    /* code below is if we want worst stage first. */
-    // if (d1 < d2) return -1;
-    // if (d1 > d2) return 1;
+    if (d1 < d2) return -1;
+    if (d1 > d2) return 1;
     return 0;
 }
 
@@ -42,6 +37,7 @@ static size_t core_pairing(cplx64_t *z, cplx64_t *p, int n, double k, double *so
     bool *z_used = (bool *)calloc(n, sizeof(bool));
     bool *p_used = (bool *)calloc(n, sizeof(bool));
     int sec_idx = 0;
+    int max_stages = soscount(n, n);
 
     // Pre-sort poles to handle "importance" up front
     qsort(p, n, sizeof(cplx64_t), polecmp);
@@ -112,8 +108,9 @@ static size_t core_pairing(cplx64_t *z, cplx64_t *p, int n, double k, double *so
         }
 
         // Write to flat double array
-        double *s = &sos_raw[sec_idx * 6];
-        double sk = (sec_idx == 0) ? k : 1.0;
+        int target = (max_stages - 1 - sec_idx);
+	double *s = &sos_raw[target * 6];
+        double sk = (sec_idx == max_stages - 1) ? k : 1.0;
 
         s[0] = sk; // b0
 	/* poly expansion. */

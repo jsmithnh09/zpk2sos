@@ -28,6 +28,7 @@ def unload_library():
 
         close = _ctypes.dlclose
     close(lib._handle)
+    return 0
 
 
 # Load the library using the path from Cmake/Ctest.
