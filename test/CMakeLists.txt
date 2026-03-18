@@ -15,11 +15,21 @@ if(NOT EXISTS "${VENV_DIR}")
 	message(STATUS "### Installing SciPy/PyTest")
 	set(PY_PKG "scipy" "pytest" "numpy")
 	foreach(pkg ${PY_PKG})
-		execute_process(COMMAND ${VENV_PYTHON} -m pip install ${pkg}
-			RESULT_VARIABLE pip_result
+		# checking if the package is already present in the virtual
+		# environment; save some build-time and effort.
+		execute_process(COMMAND ${VENV_PYTHON} -m pip show ${pkg}
+			RESULT_VARIABLE exist_result
+			OUTPUT_QUIET ERROR_QUIET
 			)
-		if(NOT pip_result EQUAL 0)
-			message(FATAL_ERROR "Failed to install ${pkg}.")
+		if(NOT ${exist_result} EQUAL 0)
+			execute_process(COMMAND ${VENV_PYTHON} -m pip install ${pkg}
+				RESULT_VARIABLE pip_result
+				)
+			if(NOT ${pip_result} EQUAL 0)
+				message(FATAL_ERROR "Failed to install ${pkg}.")
+			endif()
+		else()
+			message(STATUS, "### ${pkg} installed.")
 		endif()
 	endforeach()
 endif()
