@@ -17,8 +17,11 @@ target_include_directories(zpk2sos PUBLIC
 # setting properties for Python testing (toplevel already set
 # C11 standard requirement.)
 set_target_properties(zpk2sos PROPERTIES
-	OUTPUT_NAME "zpk2sos"
+	POSITION_INDEPENDENT_CODE ON
 )
+set(ZSOS_LIB_PATH "${CMAKE_BINARY_DIR}/libzpk2sos${CMAKE_SHARED_LIBRARY_PREFIX}")
+set_property(GLOBAL PROPERTY ENVIRONMENT "ZSOS_LIB_PATH=${ZSOS_LIB_PATH}")
+
 
 # adding debug capability here (kinda manual, but that's fine for now.)
 # option(ENABLE_DEBUG "Enabling Debug printout for pair tracking" ON)
