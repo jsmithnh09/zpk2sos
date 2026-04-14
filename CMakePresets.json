@@ -27,15 +27,6 @@
     },
 
     {
-      "name": "release",
-      "displayName": "Release Build",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-
-    {
       "name": "test",
       "displayName": "Debug + Tests",
       "inherits": "debug",
@@ -47,32 +38,18 @@
 
   "buildPresets": [
     {
-        "name": "clean",
-        "displayName": "Clean build directory",
-        "configurePreset": "debug",
-        "targets": ["clean"]
-    },
-    {
       "name": "debug",
       "configurePreset": "debug"
     },
     {
-      "name": "release",
-      "configurePreset": "release"
-    },
-    {
       "name": "test",
       "configurePreset": "test"
-    }
-  ],
-
-  "testPresets": [
+    },
     {
-      "name": "test",
-      "configurePreset": "test",
-      "output": {
-        "outputOnFailure": true
-      }
+      "name": "clean",
+      "displayName": "Clean Build Directory",
+      "configurePreset": "debug",
+      "targets": ["clean"]
     }
   ]
 }
