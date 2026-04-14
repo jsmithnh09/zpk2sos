@@ -11,3 +11,5 @@ CTestTestfile.cmake
 _deps
 cmake-build
 build
+*.egg-info
+__pycache__/
