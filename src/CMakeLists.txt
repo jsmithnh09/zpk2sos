@@ -19,8 +19,10 @@ target_include_directories(zpk2sos PUBLIC
 set_target_properties(zpk2sos PROPERTIES
 	POSITION_INDEPENDENT_CODE ON
 )
-set(ZSOS_LIB_PATH "${CMAKE_BINARY_DIR}/libzpk2sos${CMAKE_SHARED_LIBRARY_PREFIX}")
-set_property(GLOBAL PROPERTY ENVIRONMENT "ZSOS_LIB_PATH=${ZSOS_LIB_PATH}")
+set(ZSOS_LIB_PATH 
+	"${CMAKE_BINARY_DIR}/src/libzpk2sos${CMAKE_SHARED_LIBRARY_SUFFIX}"
+	CACHE STRING "Path to the zpk2sos shared library."
+)
 
 
 # adding debug capability here (kinda manual, but that's fine for now.)
