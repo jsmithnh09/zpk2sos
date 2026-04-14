@@ -47,6 +47,12 @@
 
   "buildPresets": [
     {
+        "name": "clean",
+        "displayName": "Clean build directory",
+        "configurePreset": "debug",
+        "targets": ["clean"]
+    },
+    {
       "name": "debug",
       "configurePreset": "debug"
     },

@@ -1,0 +1,14 @@
+[project]
+name = "zpk2sos-tests"
+version = "0.0.1"
+description = "Python test environment for zpk2sos C-library"
+requires-python = ">=3.8"
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "pytest"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]

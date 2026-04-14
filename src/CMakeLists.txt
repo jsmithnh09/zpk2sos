@@ -9,14 +9,17 @@ else()
 	target_compile_options(zpk2sos PUBLIC -Wall -O2)
 	target_link_libraries(zpk2sos m)
 endif()
-target_include_directories(zpk2sos PUBLIC 
-	${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+target_include_directories(zpk2sos PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+)
 
 # setting properties for Python testing (toplevel already set
 # C11 standard requirement.)
 set_target_properties(zpk2sos PROPERTIES
 	POSITION_INDEPENDENT_CODE ON
-	)
+	OUTPUT_NAME "zpk2sos"
+)
 
 # adding debug capability here (kinda manual, but that's fine for now.)
 option(ENABLE_DEBUG "Enabling Debug printout for pair tracking" ON)

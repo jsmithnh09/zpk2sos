@@ -1,0 +1,30 @@
+{
+  "version": 3,
+
+  "testPresets": [
+    {
+      "name": "debug",
+      "displayName": "Run Tests (Debug)",
+      "configurePreset": "debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Run Tests (Release)",
+      "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "all",
+      "displayName": "Run All Tests",
+      "inherits": ["debug"],
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
