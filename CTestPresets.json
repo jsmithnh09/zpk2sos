@@ -1,10 +1,8 @@
 {
   "version": 3,
-
   "testPresets": [
     {
       "name": "test",
-      "displayName": "Run Python Tests",
       "configurePreset": "test",
       "output": {
         "outputOnFailure": true
