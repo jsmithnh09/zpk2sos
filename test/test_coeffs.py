@@ -6,6 +6,7 @@ import sys
 import os
 import atexit
 from scipy.signal import butter, cheby1, cheby2, ellip, zpk2sos, sosfreqz
+from typing import Tuple
 
 # CMake ought to configure this.
 _libenv = os.environ.get("ZSOS_LIB_PATH")
@@ -19,7 +20,7 @@ _libstr = str(_libpath.resolve())
 
 
 # putting in the unload function for the DLL.
-def unload_library():
+def unload_library() -> int:
     if sys.platform == "win32":
         import kernel32
 
@@ -50,7 +51,7 @@ lib.zpk2sos.argtypes = [
 lib.zpk2sos.restype = c_size_t
 
 
-def soscmp(sos1, sos2, num=1024, atol=1e-08):
+def soscmp(sos1, sos2, num=1024, atol=1e-08) -> bool:
     """
     Compare SOS responses.
 
@@ -76,7 +77,7 @@ def soscmp(sos1, sos2, num=1024, atol=1e-08):
     return bool(np.all(np.isclose(href, htest, atol=atol)))
 
 
-def zpk2sos_wrapper(z, p, k):
+def zpk2sos_wrapper(z, p, k) -> Tuple[np.ndarray, int]:
     """
     ZPK2SOS C-wrapper.
 
