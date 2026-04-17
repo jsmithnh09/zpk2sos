@@ -15,13 +15,13 @@ CHECKMARK='\u2714'
 if ! command -v cmake &> /dev/null
 then
 	echo "CMake could not be found."
-	exit 1
+	exit 1	
 fi
 echo "-- CMake installed."
 if ! command -v uv &> /dev/null
 then
-	echo "uv python manager not found."
-	exit 1
+	echo "uv python manager not found. Installing."
+	curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 echo "-- uv installed."
 
